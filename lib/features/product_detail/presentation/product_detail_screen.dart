@@ -38,18 +38,40 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> with 
       data: (products) {
         final p = products.firstWhere((element) => element.id == widget.productId, orElse: () => widget.product!);
 
+        if (p != null) {
+          final available = p.inventory;
+          final desiredCount = available > 0 ? _count.clamp(1, available) : 1;
+          if (_count != desiredCount) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              setState(() => _count = desiredCount);
+            });
+          }
+        }
+
         return Scaffold(
           floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              if (p != null) {
-                ref.read(cartProvider.notifier).add(p, _count);
-                ref.read(productsInventoryProvider.notifier).decreaseInventory(p.id, _count);
-              }
-              final snack = SnackBar(content: Text('Added $_count to cart: ${p?.title ?? '#${widget.productId}'}'));
-              ScaffoldMessenger.of(context).showSnackBar(snack);
-            },
+            onPressed: p != null && p.inventory > 0
+                ? () async {
+                    final added = await ref.read(cartProvider.notifier).add(p, _count);
+                    if (!mounted) return;
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          added
+                              ? 'Added $_count to cart: ${p.title}'
+                              : 'Only ${p.inventory} left in stock',
+                        ),
+                      ),
+                    );
+                    if (added && mounted) {
+                      setState(() => _count = 1);
+                    }
+                  }
+                : null,
             icon: const Icon(Icons.add_shopping_cart_rounded),
-            label: const Text('Add to cart'),
+            label: Text(p != null && p.inventory > 0 ? 'Add to cart' : 'Out of stock'),
           ),
           body: SafeArea(
             child: Align(
@@ -110,6 +132,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> with 
                                 key: ValueKey(!_flipped),
                                 product: p,
                                 count: _count,
+                                maxCount: p?.inventory ?? 0,
                                 onCountChanged: (c) => setState(() => _count = c),
                               ),
                       ),
@@ -151,8 +174,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> with 
 class _DetailFront extends StatelessWidget {
   final Product? product;
   final int count;
+  final int maxCount;
   final void Function(int) onCountChanged;
-  const _DetailFront({super.key, this.product, required this.count, required this.onCountChanged});
+  const _DetailFront({super.key, this.product, required this.count, required this.maxCount, required this.onCountChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +214,7 @@ class _DetailFront extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        _ItemCounter(count: count, onChanged: onCountChanged),
+        _ItemCounter(count: count, max: maxCount, onChanged: onCountChanged),
         const SizedBox(height: 12),
       ],
     );
@@ -199,22 +223,26 @@ class _DetailFront extends StatelessWidget {
 
 class _ItemCounter extends StatelessWidget {
   final int count;
+  final int max;
   final void Function(int) onChanged;
-  const _ItemCounter({super.key, required this.count, required this.onChanged});
+  const _ItemCounter({super.key, required this.count, required this.max, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
+    final canDecrease = count > 1;
+    final canIncrease = max > 0 && count < max;
+    final displayCount = max > 0 ? count : 0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
           icon: const Icon(Icons.remove_circle_outline),
-          onPressed: () => onChanged(count > 1 ? count - 1 : 1),
+          onPressed: canDecrease ? () => onChanged(count - 1) : null,
         ),
-        Text('$count', style: Theme.of(context).textTheme.titleLarge),
+        Text('$displayCount', style: Theme.of(context).textTheme.titleLarge),
         IconButton(
           icon: const Icon(Icons.add_circle_outline),
-          onPressed: () => onChanged(count + 1),
+          onPressed: canIncrease ? () => onChanged(count + 1) : null,
         ),
       ],
     );
