@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/cart_provider.dart';
 import '../../home/data/products_inventory_provider.dart';
 import '../../../services/daraja_service.dart';
+import '../../../services/providers.dart';
 import '../../../widgets/breadcrumbs.dart';
 import '../../../widgets/product_image.dart';
 
@@ -125,11 +126,31 @@ class CartContents extends ConsumerWidget {
   }
 }
 
-class _CartTotals extends ConsumerWidget {
+class _CartTotals extends ConsumerStatefulWidget {
   const _CartTotals({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CartTotals> createState() => _CartTotalsState();
+}
+
+class _CartTotalsState extends ConsumerState<_CartTotals> {
+  late final TextEditingController _phoneController;
+
+  @override
+  void initState() {
+    super.initState();
+    final config = ref.read(darajaConfigProvider);
+    _phoneController = TextEditingController(text: config.defaultMsisdn ?? '');
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final total = ref.watch(cartProvider.notifier).total;
     final tax = total * 0.1;
     final subtotal = total - tax;
@@ -174,8 +195,26 @@ class _CartTotals extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16.0),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Phone Number',
+              hintText: 'Enter the phone number to be charged',
+              prefixIcon: Icon(Icons.phone),
+            ),
+          ),
+          const SizedBox(height: 16.0),
           ElevatedButton(
             onPressed: () async {
+              final input = _phoneController.text.trim();
+              if (input.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter the phone number to continue.')),
+                );
+                return;
+              }
+
               final navigator = Navigator.of(context, rootNavigator: true);
               showDialog<void>(
                 context: context,
@@ -183,7 +222,9 @@ class _CartTotals extends ConsumerWidget {
                 builder: (_) => const Center(child: CircularProgressIndicator()),
               );
               try {
-                final receipt = await ref.read(cartProvider.notifier).checkout();
+                final receipt = await ref.read(cartProvider.notifier).checkout(
+                      phoneNumber: input,
+                    );
                 if (navigator.mounted) {
                   navigator.pop();
                 }

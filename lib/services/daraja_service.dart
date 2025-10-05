@@ -123,13 +123,22 @@ class DarajaService {
 
       return DarajaReceipt(
         amount: amount,
-        phoneNumber: payer,
+        phoneNumber: sanitizedPayer,
         timestamp: DateTime.now(),
         merchantRequestId: data['MerchantRequestID']?.toString() ?? '',
         checkoutRequestId: data['CheckoutRequestID']?.toString() ?? '',
         responseDescription: data['ResponseDescription']?.toString() ?? '',
       );
     } on DioException catch (error) {
+      final isNetworkError = error.type == DioExceptionType.connectionError ||
+          (error.message?.toLowerCase().contains('xmlhttprequest') ?? false);
+
+      if (isNetworkError) {
+        throw DarajaException(
+          'Network error while contacting the payment service. Please check your internet connection and try again.',
+        );
+      }
+
       final message = error.response?.data is Map<String, dynamic>
           ? (error.response!.data['errorMessage']?.toString() ?? error.message)
           : error.message;
