@@ -3,20 +3,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cart/data/cart_provider.dart';
+import '../../cart/presentation/cart_screen.dart';
 import '../data/products_inventory_provider.dart';
 import '../data/products_provider.dart';
 import '../../../widgets/product_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  void _openCartDrawer() {
+    _scaffoldKey.currentState?.openEndDrawer();
+  }
+
+  void _closeCartDrawer() {
+    _scaffoldKey.currentState?.closeEndDrawer();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsInventoryProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final selected = ref.watch(selectedCategoryProvider);
 
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text('POS System'),
         actions: [
@@ -27,7 +44,7 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   IconButton(
                     tooltip: 'Cart',
-                    onPressed: () => context.go('/cart'),
+                    onPressed: _openCartDrawer,
                     icon: const Icon(Icons.shopping_cart),
                   ),
                   if (count > 0)
@@ -51,6 +68,16 @@ class HomeScreen extends ConsumerWidget {
             },
           ),
         ],
+      ),
+      endDrawerEnableOpenDragGesture: false,
+      endDrawer: Drawer(
+        width: 420,
+        child: SafeArea(
+          child: CartContents(
+            showBreadcrumbs: false,
+            onClose: _closeCartDrawer,
+          ),
+        ),
       ),
       body: Column(
         children: [

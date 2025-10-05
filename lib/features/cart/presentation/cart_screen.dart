@@ -11,86 +11,122 @@ class CartScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Your Cart'),
+      ),
+      body: const CartContents(),
+    );
+  }
+}
+
+class CartContents extends ConsumerWidget {
+  final bool showBreadcrumbs;
+  final VoidCallback? onClose;
+
+  const CartContents({super.key, this.showBreadcrumbs = true, this.onClose});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final cartItems = ref.watch(cartProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
     final inventoryState = ref.watch(productsInventoryProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Cart'),
-      ),
-      body: Column(
-        children: [
+    final closeAction = onClose ?? () => Navigator.of(context).maybePop();
+
+    return Column(
+      children: [
+        if (showBreadcrumbs)
           Breadcrumbs(
             items: [
               BreadcrumbItem(title: 'Home', path: '/'),
               BreadcrumbItem(title: 'Cart', path: '/cart'),
             ],
-          ),
-          Expanded(
-            child: cartItems.isEmpty
-                ? const Center(
-                    child: Text('Your cart is empty.'),
-                  )
-                : ListView.builder(
-                    itemCount: cartItems.length,
-                    itemBuilder: (context, index) {
-                      final item = cartItems[index];
-                      final available = inventoryState.maybeWhen(
-                        data: (products) =>
-                            products.firstWhere((element) => element.id == item.product.id, orElse: () => item.product).inventory,
-                        orElse: () => item.product.inventory,
-                      );
-                      return ListTile(
-                        leading: ProductImage(
-                          image: item.product.image,
-                          width: 50,
-                          height: 50,
-                          fit: BoxFit.contain,
-                        ),
-                        title: Text(item.product.title),
-                        subtitle: Text('\$${item.product.price.toStringAsFixed(2)}'),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.remove),
-                              onPressed: () async {
-                                await cartNotifier.decrement(item.product);
-                              },
-                            ),
-                            Text(item.quantity.toString()),
-                            IconButton(
-                              icon: const Icon(Icons.add),
-                              onPressed: () async {
-                                final added = await cartNotifier.add(item.product);
-                                if (!added && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Only $available left in stock.')),
-                                  );
-                                }
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () async {
-                                await cartNotifier.remove(item.product);
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Your Cart',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
+                ),
+                IconButton(
+                  tooltip: 'Close cart',
+                  onPressed: closeAction,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
           ),
-          if (cartItems.isNotEmpty) _CartTotals(),
-        ],
-      ),
+        Expanded(
+          child: cartItems.isEmpty
+              ? const Center(
+                  child: Text('Your cart is empty.'),
+                )
+              : ListView.builder(
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final item = cartItems[index];
+                    final available = inventoryState.maybeWhen(
+                      data: (products) =>
+                          products.firstWhere((element) => element.id == item.product.id, orElse: () => item.product).inventory,
+                      orElse: () => item.product.inventory,
+                    );
+                    return ListTile(
+                      leading: ProductImage(
+                        image: item.product.image,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
+                      title: Text(item.product.title),
+                      subtitle: Text('\$${item.product.price.toStringAsFixed(2)}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove),
+                            onPressed: () async {
+                              await cartNotifier.decrement(item.product);
+                            },
+                          ),
+                          Text(item.quantity.toString()),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () async {
+                              final added = await cartNotifier.add(item.product);
+                              if (!added && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Only $available left in stock.')),
+                                );
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () async {
+                              await cartNotifier.remove(item.product);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        if (cartItems.isNotEmpty) const _CartTotals(),
+      ],
     );
   }
 }
 
 class _CartTotals extends ConsumerWidget {
+  const _CartTotals({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final total = ref.watch(cartProvider.notifier).total;
