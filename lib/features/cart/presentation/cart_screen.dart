@@ -11,11 +11,11 @@ class CartScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: Text('Your Cart'),
       ),
-      body: CartContents(),
+      body: const CartContents(),
     );
   }
 }
@@ -38,7 +38,7 @@ class CartContents extends ConsumerWidget {
       children: [
         if (showBreadcrumbs)
           Breadcrumbs(
-            items: const [
+            items: [
               BreadcrumbItem(title: 'Home', path: '/'),
               BreadcrumbItem(title: 'Cart', path: '/cart'),
             ],
