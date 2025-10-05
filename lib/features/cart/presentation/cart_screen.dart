@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/cart_provider.dart';
 import '../../home/data/products_inventory_provider.dart';
 import '../../../widgets/breadcrumbs.dart';
+import '../../../widgets/product_image.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -42,8 +42,8 @@ class CartScreen extends ConsumerWidget {
                         orElse: () => item.product.inventory,
                       );
                       return ListTile(
-                        leading: CachedNetworkImage(
-                          imageUrl: item.product.image,
+                        leading: ProductImage(
+                          image: item.product.image,
                           width: 50,
                           height: 50,
                           fit: BoxFit.contain,
