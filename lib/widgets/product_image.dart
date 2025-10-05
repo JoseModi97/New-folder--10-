@@ -24,23 +24,29 @@ class ProductImage extends StatelessWidget {
     this.errorBuilder,
   });
 
-  bool get _isRemote => image.startsWith('http');
+  String get _normalized => image.trim();
+
+  bool get _isRemote => _normalized.toLowerCase().startsWith('http');
 
   String get _assetPath {
-    if (image.startsWith('assets/') || image.startsWith('Sale/')) {
-      return image;
+    final sanitized = _normalized.replaceAll('\\', '/');
+    if (sanitized.startsWith('assets/') || sanitized.startsWith('Sale/')) {
+      return sanitized;
     }
-    if (image.startsWith('/')) {
-      return 'Sale/${image.substring(1)}';
+    if (sanitized.startsWith('/')) {
+      return 'Sale/${sanitized.substring(1)}';
     }
-    return 'Sale/$image';
+    if (sanitized.startsWith('images/')) {
+      return 'Sale/$sanitized';
+    }
+    return 'Sale/$sanitized';
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isRemote) {
       return CachedNetworkImage(
-        imageUrl: image,
+        imageUrl: _normalized,
         width: width,
         height: height,
         fit: fit,
