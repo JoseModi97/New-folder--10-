@@ -135,7 +135,7 @@ class DarajaService {
 
       if (isNetworkError) {
         throw DarajaException(
-          'Network error while contacting the payment service. Please check your internet connection and try again.',
+          'Unable to reach the Safaricom Daraja service. Verify your Daraja sandbox credentials and availability, then try again.',
         );
       }
 
