@@ -7,6 +7,11 @@ class ProductRating {
         rate: (json['rate'] as num).toDouble(),
         count: (json['count'] as num).toInt(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'rate': rate,
+        'count': count,
+      };
 }
 
 class Product {
@@ -62,5 +67,16 @@ class Product {
       inventory: inventory ?? this.inventory,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'price': price,
+        'description': description,
+        'category': category,
+        'image': image,
+        'rating': rating.toJson(),
+        'inventory': inventory,
+      };
 }
 
