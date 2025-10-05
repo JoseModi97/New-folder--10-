@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/cart_provider.dart';
 import '../../home/data/products_inventory_provider.dart';
+import '../../../services/daraja_service.dart';
 import '../../../widgets/breadcrumbs.dart';
 import '../../../widgets/product_image.dart';
 
@@ -175,11 +176,41 @@ class _CartTotals extends ConsumerWidget {
           const SizedBox(height: 16.0),
           ElevatedButton(
             onPressed: () async {
-              await ref.read(cartProvider.notifier).checkout();
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Checkout complete! Inventory updated.')),
-                );
+              final navigator = Navigator.of(context, rootNavigator: true);
+              showDialog<void>(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(child: CircularProgressIndicator()),
+              );
+              try {
+                final receipt = await ref.read(cartProvider.notifier).checkout();
+                if (navigator.mounted) {
+                  navigator.pop();
+                }
+                if (context.mounted) {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (_) => _ReceiptDialog(receipt: receipt),
+                  );
+                }
+              } on DarajaException catch (error) {
+                if (navigator.mounted) {
+                  navigator.pop();
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error.message)),
+                  );
+                }
+              } catch (_) {
+                if (navigator.mounted) {
+                  navigator.pop();
+                }
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Checkout failed. Please try again.')),
+                  );
+                }
               }
             },
             child: const Text('Checkout'),
@@ -191,6 +222,67 @@ class _CartTotals extends ConsumerWidget {
             },
             child: const Text('Clear Cart'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptDialog extends StatelessWidget {
+  const _ReceiptDialog({required this.receipt});
+
+  final DarajaReceipt receipt;
+
+  String _formatDateTime(DateTime dateTime) {
+    final local = dateTime.toLocal();
+    final date = '${local.year.toString().padLeft(4, '0')}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
+    final time = '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}:${local.second.toString().padLeft(2, '0')}';
+    return '$date $time';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Payment Receipt'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ReceiptRow(label: 'Amount', value: 'KES ${receipt.amount.toStringAsFixed(2)}'),
+          _ReceiptRow(label: 'Phone', value: receipt.phoneNumber),
+          _ReceiptRow(label: 'Merchant Request ID', value: receipt.merchantRequestId),
+          _ReceiptRow(label: 'Checkout Request ID', value: receipt.checkoutRequestId),
+          _ReceiptRow(label: 'Description', value: receipt.responseDescription),
+          _ReceiptRow(label: 'Timestamp', value: _formatDateTime(receipt.timestamp)),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReceiptRow extends StatelessWidget {
+  const _ReceiptRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.labelSmall),
+          const SizedBox(height: 2),
+          Text(value, style: theme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
         ],
       ),
     );
