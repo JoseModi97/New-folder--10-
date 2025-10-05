@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../models/product.dart';
 import '../../cart/data/cart_provider.dart';
 import '../../../widgets/breadcrumbs.dart';
+import '../../../widgets/product_image.dart';
 import '../../home/data/products_inventory_provider.dart';
 import '../../home/data/products_provider.dart';
 
@@ -195,8 +196,8 @@ class _DetailFront extends StatelessWidget {
                   child: Container(
                     color: Theme.of(context).colorScheme.surface,
                     child: Center(
-                      child: Image.network(
-                        p.image,
+                      child: ProductImage(
+                        image: p.image,
                         fit: BoxFit.contain,
                       ),
                     ),

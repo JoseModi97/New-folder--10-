@@ -1,9 +1,9 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/cart/data/cart_provider.dart';
 import '../models/product.dart';
+import 'product_image.dart';
 
 class ProductCard extends ConsumerWidget {
   final Product product;
@@ -20,11 +20,11 @@ class ProductCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: CachedNetworkImage(
-                imageUrl: product.image,
+              child: ProductImage(
+                image: product.image,
                 fit: BoxFit.contain,
-                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                errorWidget: (context, url, error) => const Icon(Icons.error),
+                placeholderBuilder: (context) => const Center(child: CircularProgressIndicator()),
+                errorBuilder: (context, error) => const Icon(Icons.error),
               ),
             ),
             Padding(
