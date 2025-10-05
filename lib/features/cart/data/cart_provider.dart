@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/product.dart';
+import '../../../services/daraja_service.dart';
+import '../../../services/providers.dart';
 import '../../home/data/products_inventory_provider.dart';
 import 'cart_persistence.dart';
 
@@ -139,10 +141,22 @@ class CartController extends StateNotifier<List<CartItem>> {
     await clearPersistedCart();
   }
 
-  Future<void> checkout() async {
+  Future<DarajaReceipt> checkout({String? phoneNumber}) async {
+    if (state.isEmpty) {
+      throw DarajaException('Cart is empty.');
+    }
+
+    final total = this.total;
+    final darajaService = ref.read(darajaServiceProvider);
+    final receipt = await darajaService.initiateStkPush(
+      amount: total,
+      phoneNumber: phoneNumber,
+    );
+
     await ref.read(productsInventoryProvider.notifier).persistInventoryToDisk();
     state = const [];
     await clearPersistedCart();
+    return receipt;
   }
 }
 
