@@ -81,31 +81,23 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> with 
                 constraints: const BoxConstraints(maxWidth: 1000),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          onPressed: () => Navigator.of(context).maybePop(),
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Breadcrumbs(
-                            items: [
-                              BreadcrumbItem(title: 'Home', path: '/'),
-                              if (p != null)
-                                BreadcrumbItem(
-                                  title: p.category,
-                                  path: '/',
-                                  onTap: () {
-                                    ref.read(selectedCategoryProvider.notifier).state = p.category;
-                                    context.go('/');
-                                  },
-                                ),
-                              if (p != null) BreadcrumbItem(title: p.title, path: '/product/${p.id}'),
-                            ],
-                          ),
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: Breadcrumbs(
+                        items: [
+                          BreadcrumbItem(title: 'Home', path: '/'),
+                          if (p != null)
+                            BreadcrumbItem(
+                              title: p.category,
+                              path: '/',
+                              onTap: () {
+                                ref.read(selectedCategoryProvider.notifier).state = p.category;
+                                context.go('/');
+                              },
+                            ),
+                          if (p != null) BreadcrumbItem(title: p.title, path: '/product/${p.id}'),
+                        ],
+                      ),
                     ),
                     Expanded(
                       child: AnimatedSwitcher(
