@@ -59,10 +59,23 @@ class ProductCard extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.all(12.0),
               child: ElevatedButton(
-                onPressed: () {
-                  ref.read(cartProvider.notifier).add(product);
-                },
-                child: const Text('Add to Cart'),
+                onPressed: product.inventory > 0
+                    ? () async {
+                        final success = await ref.read(cartProvider.notifier).add(product);
+                        if (!context.mounted) return;
+                        final messenger = ScaffoldMessenger.of(context);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              success
+                                  ? 'Added ${product.title} to cart'
+                                  : 'Only ${product.inventory} left in stock',
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
+                child: Text(product.inventory > 0 ? 'Add to Cart' : 'Out of Stock'),
               ),
             ),
           ],

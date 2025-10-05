@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/cart_provider.dart';
+import '../../home/data/products_inventory_provider.dart';
 import '../../../widgets/breadcrumbs.dart';
 
 class CartScreen extends ConsumerWidget {
@@ -12,6 +13,7 @@ class CartScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cartItems = ref.watch(cartProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
+    final inventoryState = ref.watch(productsInventoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,6 +36,11 @@ class CartScreen extends ConsumerWidget {
                     itemCount: cartItems.length,
                     itemBuilder: (context, index) {
                       final item = cartItems[index];
+                      final available = inventoryState.maybeWhen(
+                        data: (products) =>
+                            products.firstWhere((element) => element.id == item.product.id, orElse: () => item.product).inventory,
+                        orElse: () => item.product.inventory,
+                      );
                       return ListTile(
                         leading: CachedNetworkImage(
                           imageUrl: item.product.image,
@@ -48,16 +55,27 @@ class CartScreen extends ConsumerWidget {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.remove),
-                              onPressed: () => cartNotifier.decrement(item.product),
+                              onPressed: () async {
+                                await cartNotifier.decrement(item.product);
+                              },
                             ),
                             Text(item.quantity.toString()),
                             IconButton(
                               icon: const Icon(Icons.add),
-                              onPressed: () => cartNotifier.add(item.product),
+                              onPressed: () async {
+                                final added = await cartNotifier.add(item.product);
+                                if (!added && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Only $available left in stock.')),
+                                  );
+                                }
+                              },
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete),
-                              onPressed: () => cartNotifier.remove(item.product),
+                              onPressed: () async {
+                                await cartNotifier.remove(item.product);
+                              },
                             ),
                           ],
                         ),
@@ -120,15 +138,20 @@ class _CartTotals extends ConsumerWidget {
           ),
           const SizedBox(height: 16.0),
           ElevatedButton(
-            onPressed: () {
-              // TODO: Implement checkout
+            onPressed: () async {
+              await ref.read(cartProvider.notifier).checkout();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Checkout complete! Inventory updated.')),
+                );
+              }
             },
             child: const Text('Checkout'),
           ),
           const SizedBox(height: 8.0),
           OutlinedButton(
-            onPressed: () {
-              ref.read(cartProvider.notifier).clear();
+            onPressed: () async {
+              await ref.read(cartProvider.notifier).clear();
             },
             child: const Text('Clear Cart'),
           ),
