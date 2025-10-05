@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/product.dart';
 import '../../home/data/products_inventory_provider.dart';
+import 'cart_persistence.dart';
 
 class CartItem {
   final Product product;
@@ -13,9 +16,70 @@ class CartItem {
 }
 
 class CartController extends StateNotifier<List<CartItem>> {
-  CartController(this.ref) : super(const []);
+  CartController(this.ref) : super(const []) {
+    Future.microtask(_restoreCart);
+  }
 
   final Ref ref;
+
+  Future<void> _restoreCart() async {
+    try {
+      final persisted = await readPersistedCart();
+      if (persisted.isEmpty) {
+        return;
+      }
+
+      final inventoryNotifier = ref.read(productsInventoryProvider.notifier);
+      var products = [...await ref.read(productsInventoryProvider.future)];
+      final restoredItems = <CartItem>[];
+
+      for (final line in persisted) {
+        final index = products.indexWhere((element) => element.id == line.productId);
+        if (index == -1) {
+          continue;
+        }
+
+        final product = products[index];
+        final available = product.inventory;
+        if (available <= 0) {
+          continue;
+        }
+
+        final desired = line.quantity;
+        final quantity = desired <= 0
+            ? 0
+            : (desired > available ? available : desired);
+        if (quantity <= 0) {
+          continue;
+        }
+
+        final reserved = await inventoryNotifier.reserveInventory(product.id, quantity);
+        if (!reserved) {
+          continue;
+        }
+
+        restoredItems.add(CartItem(product, quantity));
+        products[index] = product.copyWith(inventory: available - quantity);
+      }
+
+      if (restoredItems.isEmpty) {
+        await clearPersistedCart();
+        return;
+      }
+
+      state = restoredItems;
+      await _persistCart();
+    } catch (_) {
+      await clearPersistedCart();
+    }
+  }
+
+  Future<void> _persistCart() async {
+    await writePersistedCart([
+      for (final item in state)
+        PersistedCartLine(productId: item.product.id, quantity: item.quantity),
+    ]);
+  }
 
   Future<bool> add(Product p, [int quantity = 1]) async {
     final inventoryNotifier = ref.read(productsInventoryProvider.notifier);
@@ -33,6 +97,7 @@ class CartController extends StateNotifier<List<CartItem>> {
       updated[idx] = item.copyWith(quantity: item.quantity + quantity);
       state = updated;
     }
+    await _persistCart();
     return true;
   }
 
@@ -44,6 +109,7 @@ class CartController extends StateNotifier<List<CartItem>> {
     final item = state[idx];
     await ref.read(productsInventoryProvider.notifier).releaseInventory(p.id, item.quantity);
     state = state.where((e) => e.product.id != p.id).toList();
+    await _persistCart();
   }
 
   Future<void> decrement(Product p) async {
@@ -59,6 +125,7 @@ class CartController extends StateNotifier<List<CartItem>> {
       updated[idx] = item.copyWith(quantity: q);
     }
     state = updated;
+    await _persistCart();
   }
 
   double get total => state.fold(0.0, (sum, i) => sum + i.product.price * i.quantity);
@@ -69,11 +136,13 @@ class CartController extends StateNotifier<List<CartItem>> {
       await notifier.releaseInventory(item.product.id, item.quantity);
     }
     state = const [];
+    await clearPersistedCart();
   }
 
   Future<void> checkout() async {
     await ref.read(productsInventoryProvider.notifier).persistInventoryToDisk();
     state = const [];
+    await clearPersistedCart();
   }
 }
 
